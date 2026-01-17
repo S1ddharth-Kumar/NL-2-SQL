@@ -6,11 +6,11 @@ A modular, interpretable pipeline that converts natural language questions into 
 
 | Requirement | Implementation |
 |-------------|----------------|
-| ✅ Takes natural language questions as input | Web UI with question input and example queries |
-| ✅ Reasons about the database schema | Chain-of-thought prompting breaks down query logic step-by-step |
-| ✅ Generates safe, efficient SQL | LLM generates SQL with syntax verification and auto-correction |
-| ✅ Returns human-readable answers | "In Plain English" section explains what the query does |
-| ✅ Shows its reasoning | Displays numbered reasoning steps for transparency |
+| Takes natural language questions as input | Web UI with question input and example queries |
+| Reasons about the database schema | Chain-of-thought prompting breaks down query logic step-by-step |
+| Generates safe, efficient SQL | LLM generates SQL with syntax verification and auto-correction |
+| Returns human-readable answers | "In Plain English" section explains what the query does |
+| Shows its reasoning | Displays numbered reasoning steps for transparency |
 
 ## Architecture
 
@@ -121,4 +121,5 @@ We intentionally designed this as a **query generation** tool rather than an exe
 ## License
 
 MIT License
+
 
