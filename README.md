@@ -11,12 +11,19 @@ A modular, interpretable pipeline that converts natural language questions into 
 | Generates safe, efficient SQL | LLM generates SQL with syntax verification and auto-correction |
 | Returns human-readable answers | "In Plain English" section explains what the query does |
 | Shows its reasoning | Displays numbered reasoning steps for transparency |
+| Security hardened | Multi-layer prompt injection protection |
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                         Flask Web UI                            │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    Security Layer                               │
+│         (Input Validation, Prompt Injection Detection)          │
 └─────────────────────────────────────────────────────────────────┘
                                 │
                                 ▼
@@ -41,25 +48,12 @@ A modular, interpretable pipeline that converts natural language questions into 
 
 ## Pipeline Steps
 
-1. **Schema Processing** - Parses CREATE TABLE statements to understand database structure
-2. **Chain-of-Thought Reasoning** - Breaks down the question into logical steps (tables needed, joins, filters, etc.)
-3. **SQL Generation** - Generates SQL based on the reasoning
-4. **Verification & Correction** - Validates syntax and schema references, auto-corrects errors
-5. **Answer Generation** - Produces a human-readable explanation of what the query does
-
-## Why No SQL Execution?
-
-We intentionally designed this as a **query generation** tool rather than an execution engine for several important reasons:
-
-1. **Security** - Executing arbitrary SQL on real databases poses significant security risks (SQL injection, data exposure, accidental data modification)
-
-2. **Flexibility** - Users can review and modify the generated SQL before running it on their own databases with proper access controls
-
-3. **Database Agnostic** - The tool works with any SQL dialect without needing database connections or credentials
-
-4. **Educational Focus** - The transparent reasoning and human-readable explanations help users understand SQL, not just execute it
-
-5. **Production Safety** - In real-world scenarios, generated SQL should always be reviewed by a human before execution
+1. **Security Validation** - Detects prompt injection attempts, sanitizes inputs
+2. **Schema Processing** - Parses CREATE TABLE statements to understand database structure
+3. **Chain-of-Thought Reasoning** - Breaks down the question into logical steps (tables needed, joins, filters, etc.)
+4. **SQL Generation** - Generates SQL based on the reasoning
+5. **Verification & Correction** - Validates syntax and schema references, auto-corrects errors
+6. **Answer Generation** - Produces a human-readable explanation of what the query does
 
 ## Setup
 
@@ -85,12 +79,65 @@ We intentionally designed this as a **query generation** tool rather than an exe
    http://localhost:5000
    ```
 
-## Usage
+## Benchmarking
 
-1. **Define Schema** - Paste your CREATE TABLE statements
-2. **Ask Question** - Type your question in natural language
-3. **Generate** - Click to generate SQL with full reasoning
-4. **Review** - See the human-readable answer, SQL query, and step-by-step reasoning
+The project includes a modular benchmark suite using the [Spider dataset](https://yale-lily.github.io/spider).
+
+### Quick Start
+
+```bash
+# Download Spider dataset
+python benchmarks/download_spider.py
+
+# Run benchmark (100 samples)
+python benchmarks/run_benchmark.py
+
+# With LLM-as-judge semantic evaluation
+python benchmarks/run_benchmark.py --llm-judge
+
+# With execution accuracy (requires Spider databases)
+python benchmarks/run_benchmark.py --execution --databases-dir benchmarks/spider/database
+```
+
+### Evaluation Metrics
+
+| Metric | Description |
+|--------|-------------|
+| **Exact Match** | Normalized string comparison of SQL |
+| **Execution Accuracy** | Compares query results against actual databases |
+| **LLM Judge** | Semantic equivalence evaluation via LLM |
+| **Valid SQL Rate** | Percentage of syntactically valid SQL generated |
+
+### Sample Results
+
+```
+============================================================
+BENCHMARK RESULTS (10 samples)
+============================================================
+  Exact Match:         30.00%
+  LLM Judge Match:     42.86%
+  Execution Match:     100.00%
+  Valid SQL Rate:      70.00%
+  Avg Latency:         3,374ms
+============================================================
+```
+
+### Benchmark Structure
+
+```
+benchmarks/
+├── run_benchmark.py        # CLI entry point
+├── spider_benchmark.py     # Main runner
+├── download_spider.py      # Dataset download
+├── core/                   # Data classes
+│   ├── results.py          # BenchmarkResult, BenchmarkReport
+│   ├── data_loader.py      # SpiderDataLoader
+│   └── normalizer.py       # SQLNormalizer
+└── evaluators/             # Evaluation strategies
+    ├── exact_match.py      # String comparison
+    ├── execution.py        # Run against SQLite
+    └── llm_judge.py        # LLM semantic evaluation
+```
 
 ## Tech Stack
 
@@ -98,18 +145,23 @@ We intentionally designed this as a **query generation** tool rather than an exe
 - **LLM:** Qwen/Qwen3-Coder-30B-A3B-Instruct (via HuggingFace Inference API)
 - **SQL Parsing:** sqlparse
 - **Frontend:** Vanilla HTML/CSS/JavaScript
+- **Security:** Multi-layer prompt injection detection
 
 ## Project Structure
 
 ```
-├── app.py                 # Flask application
-├── config.py              # Configuration and prompts
+├── app.py                    # Flask application
+├── config.py                 # Configuration and prompts
+├── security.py               # Security layer
 ├── pipeline/
+│   ├── core.py               # Core pipeline class
 │   ├── schema_processor.py   # Schema parsing
 │   ├── reasoning.py          # Chain-of-thought reasoning
 │   ├── sql_generator.py      # SQL generation
 │   ├── verifier.py           # Syntax verification
 │   └── answer_generator.py   # Human-readable answers
+├── benchmarks/               # Benchmark suite
+├── tests/                    # Test suite
 ├── utils/
 │   └── hf_client.py          # HuggingFace API client
 ├── templates/
@@ -118,8 +170,15 @@ We intentionally designed this as a **query generation** tool rather than an exe
     └── styles.css            # Styling
 ```
 
+## Why No SQL Execution in UI?
+
+We intentionally designed this as a **query generation** tool rather than an execution engine:
+
+1. **Security** - Executing arbitrary SQL poses significant risks
+2. **Flexibility** - Users can review/modify SQL before running on their databases
+3. **Database Agnostic** - Works with any SQL dialect without needing connections
+4. **Educational Focus** - Transparent reasoning helps users understand SQL
+
 ## License
 
 MIT License
-
-
