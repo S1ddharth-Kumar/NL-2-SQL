@@ -3,18 +3,23 @@ NL-to-SQL Pipeline - Flask Web Application
 
 A modular pipeline for converting natural language to SQL using
 open-source LLMs via HuggingFace Inference API.
+
+Security features:
+- Prompt injection detection and prevention
+- Input validation and sanitization
+- Output monitoring for data leakage
 """
 
 from flask import Flask, render_template, request, jsonify
 import traceback
 
-from pipeline.schema_processor import format_schema_for_prompt
-from pipeline.reasoning import plan_query
-from pipeline.sql_generator import generate_sql, format_sql
-from pipeline.verifier import verify_and_correct
-from pipeline.answer_generator import generate_answer
+from pipeline.core import NL2SQLPipeline
+from config import ENABLE_SECURITY_LOGGING
 
 app = Flask(__name__)
+
+# Initialize the pipeline (same instance used everywhere)
+pipeline = NL2SQLPipeline(enable_security_logging=ENABLE_SECURITY_LOGGING)
 
 
 @app.route('/')
@@ -37,62 +42,44 @@ def generate():
     - sql: Generated SQL query
     - reasoning: Chain-of-thought explanation
     - verification: Verification status and any corrections
+    - disclaimer: Security notice about SQL execution
     - error: Error message if failed
     """
     try:
         data = request.get_json()
         
-        schema = data.get('schema', '').strip()
-        question = data.get('question', '').strip()
+        schema = data.get('schema', '')
+        question = data.get('question', '')
         
-        if not schema:
-            return jsonify({
-                'success': False,
-                'error': 'Please provide a database schema'
-            }), 400
+        # Run the pipeline
+        result = pipeline.generate(question, schema, include_answer=True)
         
-        if not question:
-            return jsonify({
-                'success': False,
-                'error': 'Please provide a question'
-            }), 400
-        
-        # Step 1: Process and format the schema
-        formatted_schema = format_schema_for_prompt(schema)
-        
-        # Step 2: Generate chain-of-thought reasoning
-        reasoning = plan_query(question, formatted_schema)
-        
-        # Step 3: Generate SQL based on reasoning
-        sql = generate_sql(question, formatted_schema, reasoning)
-        
-        # Step 4: Verify and correct SQL
-        verification = verify_and_correct(sql, question, schema)
-        
-        # Format the final SQL
-        final_sql = format_sql(verification.sql)
-        
-        # Step 5: Generate human-readable answer
-        answer = generate_answer(question, final_sql, reasoning)
+        if not result.success:
+            # Different response for security blocks vs other errors
+            if result.security_blocked:
+                return jsonify({
+                    'success': False,
+                    'error': result.error,
+                    'security_blocked': True
+                }), 400
+            else:
+                return jsonify({
+                    'success': False,
+                    'error': result.error
+                }), 400
         
         return jsonify({
             'success': True,
-            'sql': final_sql,
-            'reasoning': reasoning,
-            'answer': answer,
+            'sql': result.sql,
+            'reasoning': result.reasoning,
+            'answer': result.answer,
             'verification': {
-                'is_valid': verification.is_valid,
-                'corrections_made': verification.corrections_made,
-                'notes': verification.errors
-            }
+                'is_valid': result.is_valid,
+                'corrections_made': result.corrections_made,
+                'notes': result.verification_notes
+            },
+            'disclaimer': result.disclaimer
         })
-        
-    except ValueError as e:
-        # Expected errors (API issues, etc.)
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 400
         
     except Exception as e:
         # Unexpected errors
@@ -111,12 +98,14 @@ def health():
 
 if __name__ == '__main__':
     print("\n" + "=" * 60)
-    print("NL-to-SQL Pipeline")
+    print("NL-to-SQL Pipeline (Secured)")
     print("=" * 60)
+    print("\nSecurity features enabled:")
+    print("  - Prompt injection detection")
+    print("  - Input validation and sanitization")
+    print("  - Output monitoring for data leakage")
+    print(f"  - Security logging: {'enabled' if ENABLE_SECURITY_LOGGING else 'disabled'}")
     print("\nStarting server at http://localhost:5000")
-    print("\nMake sure you have:")
-    print("1. Added your HuggingFace API token to .env file")
-    print("2. Installed requirements: pip install -r requirements.txt")
     print("\n" + "=" * 60 + "\n")
     
     app.run(debug=True, port=5000)
