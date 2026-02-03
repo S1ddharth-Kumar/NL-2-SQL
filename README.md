@@ -57,10 +57,12 @@ A modular, interpretable pipeline that converts natural language questions into 
 
 ## Setup
 
+**This project uses [uv](https://docs.astral.sh/uv/) only.** Dependencies are managed via `pyproject.toml` and `uv.lock`; `requirements.txt` has been removed.
+
 1. **Install dependencies:**
 
    ```bash
-   pip install -r requirements.txt
+   uv sync
    ```
 
 2. **Configure Z.AI API key:**
@@ -74,7 +76,7 @@ A modular, interpretable pipeline that converts natural language questions into 
 3. **Run the application:**
 
    ```bash
-   python app.py
+   uv run python app.py
    ```
 
 ---
@@ -87,25 +89,25 @@ Built-in benchmark suite based on the Spider dataset for comprehensive evaluatio
 
 ```bash
 # Download Spider dataset
-python benchmarks/download_spider.py
+uv run python benchmarks/download_spider.py
 ```
 
 ### Running Benchmarks
 
 ```bash
 # Basic benchmark (100 samples)
-python benchmarks/run_benchmark.py
+uv run python benchmarks/run_benchmark.py
 
 # With semantic evaluation
-python benchmarks/run_benchmark.py --llm-judge
+uv run python benchmarks/run_benchmark.py --llm-judge
 
 # With execution accuracy (requires Spider databases)
-python benchmarks/run_benchmark.py \
+uv run python benchmarks/run_benchmark.py \
   --execution \
   --databases-dir benchmarks/spider/database
 
 # Custom sample size
-python benchmarks/run_benchmark.py --num-samples 50
+uv run python benchmarks/run_benchmark.py --num-samples 50
 ```
 
 ### Evaluation Metrics
